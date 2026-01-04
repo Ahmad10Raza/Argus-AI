@@ -1,0 +1,130 @@
+graph TB
+    subgraph "External Clients"
+        CLIENT[Client Applications<br/>Logs & Metrics Sources]
+        PROM[Prometheus<br/>Metrics Scraper]
+        DEV[Developer<br/>localhost]
+    end
+
+    subgraph "Ingestion Service - Port 8000"
+        subgraph "FastAPI Application"
+            MAIN["main.py<br/>FastAPI App<br/>Lifespan Manager"]
+            HEALTH["Health Endpoint<br/>/health"]
+            METRICS_ENDPOINT["Metrics Endpoint<br/>/metrics"]
+            
+            subgraph "API Routes"
+                LOGS_ENDPOINT["POST /api/v1/logs<br/>track_metrics decorator"]
+                METRICS_ROUTE["POST /api/v1/metrics<br/>track_metrics decorator"]
+            end
+            
+            subgraph "Core Components"
+                KAFKA_WRAPPER["kafka.py<br/>KafkaProducerWrapper<br/>Singleton Instance"]
+            end
+        end
+        
+        subgraph "Observability Layer"
+            LOGGER["libs/logging/logger.py<br/>Structured JSON Logging"]
+            TRACK_METRICS["libs/observability/metrics.py<br/>track_metrics Decorator<br/>Prometheus Counters"]
+        end
+        
+        subgraph "Data Models"
+            SCHEMAS["libs/schemas/common.py<br/>Pydantic Models"]
+            LOG_EVENT["LogEvent Schema<br/>severity message metadata"]
+            METRIC_EVENT["MetricEvent Schema<br/>metrics dict tags"]
+        end
+    end
+
+    subgraph "Event Bus - Apache Kafka"
+        KAFKA_BROKER["Kafka Broker<br/>Port 29092 Internal<br/>Port 9093 External"]
+        
+        subgraph "Kafka Topics"
+            RAW_LOGS["raw-logs Topic<br/>Log Events Queue"]
+            RAW_METRICS["raw-metrics Topic<br/>Metric Events Queue"]
+        end
+        
+        ZK["Zookeeper<br/>Kafka Coordinator"]
+    end
+
+    subgraph "Future Services Phase 3"
+        INTELLIGENCE["Intelligence Service<br/>Anomaly Detection<br/>Pattern Recognition"]
+        STORAGE["Storage Service<br/>Time-Series DB<br/>Data Lake"]
+        ACTION["Action Service<br/>Alerting<br/>Auto-Remediation"]
+    end
+
+    subgraph "Monitoring Stack"
+        PROMETHEUS["Prometheus Server<br/>Metrics Storage<br/>Scrape every 15s"]
+        GRAFANA["Grafana<br/>Visualization Dashboards"]
+    end
+
+    %% Request Flow - Logs
+    CLIENT -->|1. POST /api/v1/logs<br/>LogEvent JSON| LOGS_ENDPOINT
+    LOGS_ENDPOINT -->|2. Pydantic Validates| LOG_EVENT
+    LOG_EVENT -->|3. model_dump mode=json| LOGS_ENDPOINT
+    LOGS_ENDPOINT -->|4. async send| KAFKA_WRAPPER
+    KAFKA_WRAPPER -->|5. Serialize JSON<br/>value_serializer| RAW_LOGS
+    LOGS_ENDPOINT -->|6. Return 202 Accepted<br/>event_id| CLIENT
+    
+    %% Request Flow - Metrics
+    CLIENT -->|1. POST /api/v1/metrics<br/>MetricEvent JSON| METRICS_ROUTE
+    METRICS_ROUTE -->|2. Pydantic Validates| METRIC_EVENT
+    METRIC_EVENT -->|3. model_dump mode=json| METRICS_ROUTE
+    METRICS_ROUTE -->|4. async send| KAFKA_WRAPPER
+    KAFKA_WRAPPER -->|5. Serialize JSON<br/>value_serializer| RAW_METRICS
+    METRICS_ROUTE -->|6. Return 202 Accepted<br/>event_id| CLIENT
+
+    %% Observability Flow
+    LOGS_ENDPOINT -.->|Decorated by| TRACK_METRICS
+    METRICS_ROUTE -.->|Decorated by| TRACK_METRICS
+    TRACK_METRICS -.->|Record Latency<br/>REQUEST_LATENCY.observe| METRICS_ENDPOINT
+    TRACK_METRICS -.->|Increment Counter<br/>REQUEST_COUNT.inc| METRICS_ENDPOINT
+    KAFKA_WRAPPER -.->|Success/Error<br/>INGESTED_EVENTS.inc| METRICS_ENDPOINT
+    
+    %% Logging Flow
+    LOGS_ENDPOINT -.->|logger.debug| LOGGER
+    METRICS_ROUTE -.->|logger.error| LOGGER
+    KAFKA_WRAPPER -.->|logger.info/warning| LOGGER
+    MAIN -.->|Lifecycle Events| LOGGER
+
+    %% Prometheus Scraping
+    PROM -->|GET /metrics<br/>Every 15s| METRICS_ENDPOINT
+    METRICS_ENDPOINT -->|Prometheus Text Format<br/>Counters, Histograms| PROMETHEUS
+    PROMETHEUS --> GRAFANA
+
+    %% Health Checks
+    DEV -->|GET /health| HEALTH
+    HEALTH -->|Return status: ok| DEV
+
+    %% Kafka Dependencies
+    KAFKA_BROKER -->|Coordination| ZK
+    
+    %% Lifecycle Management
+    MAIN -->|Startup: start| KAFKA_WRAPPER
+    MAIN -->|Shutdown: stop<br/>Flush Messages| KAFKA_WRAPPER
+    KAFKA_WRAPPER -->|Connect/Disconnect| KAFKA_BROKER
+
+    %% Future Consumers
+    RAW_LOGS -.->|Future: Consume Events| INTELLIGENCE
+    RAW_METRICS -.->|Future: Consume Events| INTELLIGENCE
+    INTELLIGENCE -.->|Store Processed Data| STORAGE
+    INTELLIGENCE -.->|Trigger Alerts| ACTION
+
+    %% Data Flow Legend
+    SCHEMAS -.->|Validate All Events| LOG_EVENT
+    SCHEMAS -.->|Validate All Events| METRIC_EVENT
+
+    style CLIENT fill:#e1f5ff
+    style PROM fill:#e1f5ff
+    style DEV fill:#e1f5ff
+    style MAIN fill:#fff4e6
+    style LOGS_ENDPOINT fill:#e8f5e9
+    style METRICS_ROUTE fill:#e8f5e9
+    style KAFKA_WRAPPER fill:#fff3e0
+    style TRACK_METRICS fill:#f3e5f5
+    style LOGGER fill:#f3e5f5
+    style KAFKA_BROKER fill:#ffebee
+    style RAW_LOGS fill:#fce4ec
+    style RAW_METRICS fill:#fce4ec
+    style INTELLIGENCE fill:#e0f2f1,stroke-dasharray: 5 5
+    style STORAGE fill:#e0f2f1,stroke-dasharray: 5 5
+    style ACTION fill:#e0f2f1,stroke-dasharray: 5 5
+    style PROMETHEUS fill:#e8eaf6
+    style GRAFANA fill:#e8eaf6
