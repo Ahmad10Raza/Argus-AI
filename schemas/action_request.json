@@ -1,0 +1,61 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ActionRequest",
+    "description": "A request from the Intelligence Service to the Action Service to perform a remediation.",
+    "type": "object",
+    "required": [
+        "request_id",
+        "timestamp",
+        "incident_event_id",
+        "action_id",
+        "target",
+        "parameters",
+        "confidence_score",
+        "reasoning"
+    ],
+    "properties": {
+        "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique ID for this specific action request."
+        },
+        "timestamp": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "incident_event_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the incident that triggered this action."
+        },
+        "action_id": {
+            "type": "string",
+            "description": "ID of the pre-approved action to execute (e.g., 'restart_pod', 'clear_cache')."
+        },
+        "target": {
+            "type": "string",
+            "description": "The specific resource to act upon (e.g., 'pod-xyz', 'db-primary')."
+        },
+        "parameters": {
+            "type": "object",
+            "description": "Key-value arguments for the action script. Must be validated against the action's specific schema.",
+            "additionalProperties": true
+        },
+        "confidence_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "The AI's confidence level in this recommendation."
+        },
+        "reasoning": {
+            "type": "string",
+            "description": "Explanation of why this action was chosen."
+        },
+        "requires_approval": {
+            "type": "boolean",
+            "description": "Whether human approval is mandated by policy.",
+            "default": true
+        }
+    },
+    "additionalProperties": false
+}

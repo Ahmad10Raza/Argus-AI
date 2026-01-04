@@ -1,0 +1,57 @@
+# --- Python Environments ---
+.venv/
+venv/
+ENV/
+env/
+bin/
+lib/
+include/
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Environment Variables & Secrets (CRITICAL) ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+certs/
+secrets.yaml
+
+# --- AI & Data Science ---
+# Do not track large model weights or local datasets
+models/*.bin
+models/*.pth
+models/*.onnx
+data/raw/
+data/processed/
+*.log
+*.sqlite
+
+# --- Microservices & Docker ---
+.docker/
+docker-compose.override.yml
+*.log
+logs/
+
+# --- DevOps & Infrastructure ---
+# Terraform local state
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Kubernetes / Helm
+charts/*/charts/
+charts/*/tmp/
+.kube/config
+
+# --- IDEs & OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

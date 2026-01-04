@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IncidentEvent",
+  "description": "A normalized event representing an anomaly or issue detected in the system.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "timestamp",
+    "source_service",
+    "severity",
+    "summary",
+    "technical_details"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this specific event occurrence."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when the event occurred."
+    },
+    "source_service": {
+      "type": "string",
+      "description": "Name of the service/pod/component where the issue originated."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["INFO", "WARNING", "ERROR", "CRITICAL"],
+      "description": "Severity level of the incident."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief, human-readable description of the issue."
+    },
+    "technical_details": {
+      "type": "object",
+      "description": "Raw data, logs, or metrics associated with the event.",
+      "properties": {
+        "logs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "stack_trace": { "type": "string" }
+      }
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Optional ID to group related events."
+    }
+  },
+  "additionalProperties": false
+}

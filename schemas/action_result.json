@@ -1,0 +1,67 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ActionResult",
+    "description": " The outcome of an attempted action, sent to Audit/Intelligence services.",
+    "type": "object",
+    "required": [
+        "execution_id",
+        "request_id",
+        "timestamp_start",
+        "timestamp_end",
+        "status",
+        "logs"
+    ],
+    "properties": {
+        "execution_id": {
+            "type": "string",
+            "format": "uuid"
+        },
+        "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Links back to the ActionRequest."
+        },
+        "timestamp_start": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "timestamp_end": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "status": {
+            "type": "string",
+            "enum": [
+                "SUCCESS",
+                "FAILURE",
+                "TIMEOUT",
+                "SKIPPED"
+            ],
+            "description": "Final status of the execution."
+        },
+        "logs": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Standard output/error from the execution script."
+        },
+        "error_message": {
+            "type": "string",
+            "description": "Summary of the error if status is FAILURE."
+        },
+        "verification_result": {
+            "type": "object",
+            "description": "Optional post-action check results.",
+            "properties": {
+                "verified": {
+                    "type": "boolean"
+                },
+                "details": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "additionalProperties": false
+}

@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+      - "9093:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  # Setup tool to create topics automatically
+  kafka-setup:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - kafka
+    command: "bash -c 'echo Waiting for Kafka to be ready... && cub kafka-ready -b kafka:29092 1 20 && echo Topics created.'"
+
+  ingestion-service:
+    build:
+      context: ../../
+      dockerfile: services/ingestion_service/Dockerfile
+    container_name: ingestion-service
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../services/ingestion_service:/app/services/ingestion_service
+      - ../../libs:/app/libs
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - kafka
